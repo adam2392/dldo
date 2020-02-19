@@ -38,3 +38,15 @@ Project Organization
     │   ├── validate                            <- Scripts to validate models
     │   │
     │   └── visualization                       <- Scripts to create exploratory and results oriented visualizations
+
+Installation
+------------
+    
+    conda create -n dldo python=3.7 
+    conda install numpy scipy matplotlib seaborn pandas
+    conda install ipykernel
+    conda config --add channels http://conda.anaconda.org/gurobi
+    conda install gurobi
+    
+    # replace w/ your own license
+    grbgetkey 7e5199fa-528f-11ea-9fde-0a7c4f30bdbe
