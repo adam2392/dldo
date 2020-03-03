@@ -74,9 +74,7 @@ def subtour(edges):
 
 # Parse argument
 if __name__ == '__main__':
-    n = 10
     # Create n random points
-
     random.seed(1)
 
     # read in distances from file
