@@ -1029,9 +1029,3 @@ Number of graphs: 1024
 1 0 1 1 1 1 1 1 1 1 2
 0 1 1 1 1 1 1 1 1 1 2
 1 1 1 1 1 1 1 1 1 1 1
-
-alpha 1: 1 graph
-alpha 2: 387 graphs
-alpha 3: 570 graphs
-alpha 4: 65 graphs
-alpha 5: 1 graph

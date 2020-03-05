@@ -2,12 +2,9 @@ import time
 from pathlib import Path
 
 import numpy as np
-
-from sklearn.model_selection import train_test_split
-
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
+from sklearn.model_selection import train_test_split
 from torch.utils.data.sampler import SubsetRandomSampler
 
 from dldo.training.models import GraphNet
@@ -20,51 +17,62 @@ torch.manual_seed(seed)
 
 def createLossAndOptimizer(net, learning_rate=0.001):
     # Loss function
-    loss = nn.BCELoss()
+    # loss = nn.BCELoss()
+    loss = nn.CrossEntropyLoss()
 
     # Optimizer
     optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
 
     return (loss, optimizer)
 
-#initialize the network using Xavier initialization.
+
+# initialize the network using Xavier initialization.
 def weights_init(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
         nn.init.xavier_uniform_(m.weight.data)
 
-def train_eval(verbose = 1):
+
+def train_eval(verbose=1):
     correct = 0
     total = 0
     loss_sum = 0
     num_batches = 0
     for inputs, labels in train_loader:
+        # get nn output and predictions
         outputs = net(inputs)
-        predicted = outputs.data>0.5
+        predicted = torch.argmax(outputs, dim=1)
+
+        # determine loss and accuracy
         total += labels.size(0)
         correct += (predicted.int() == labels.int()).sum()
-        loss_sum  += loss(outputs,labels).item()
+        loss_sum += loss(outputs, labels).item()
         num_batches += 1
 
     if verbose:
         print('Train accuracy: %f %%' % (100 * correct.item() / total))
-    return loss_sum/num_batches, correct.item() / total
+    return loss_sum / num_batches, correct.item() / total
 
-def test_eval(verbose = 1):
+
+def test_eval(verbose=1):
     correct = 0
     total = 0
     loss_sum = 0
     num_batches = 0
     for inputs, labels in test_loader:
+        # get nn output and predictions
         outputs = net(inputs)
-        predicted = outputs.data>0.5
+        predicted = torch.argmax(outputs, dim=1)
+
+        # determine loss and accuracy
         total += labels.size(0)
         correct += (predicted.int() == labels.int()).sum()
-        loss_sum  += loss(outputs,labels).item()
+        loss_sum += loss(outputs, labels).item()
         num_batches += 1
 
     if verbose:
         print('Test accuracy: %f %%' % (100 * correct.item() / total))
-    return loss_sum/num_batches, correct.item() / total
+    return loss_sum / num_batches, correct.item() / total
+
 
 def train_net(net, train_loader, test_loader, batch_size, n_epochs, learning_rate):
     # Print all of the hyperparameters of the training iteration:
@@ -89,21 +97,15 @@ def train_net(net, train_loader, test_loader, batch_size, n_epochs, learning_rat
     # Time for printing
     training_start_time = time.time()
 
+    print_every = n_batches // 5
+
     # Loop for n_epochs
     for epoch in range(n_epochs):
-        running_loss = 0.0
-        print_every = n_batches // 10
-        start_time = time.time()
-        total_train_loss = 0
+        verbose = False
+        if (epoch == 0) or ((epoch + 1) % print_every) == 0:
+            verbose = True
 
-        for i, data in enumerate(train_loader, 0):
-            # Get inputs
-            inputs, labels = data
-
-            # Wrap them in a Variable object
-            inputs, labels = Variable(inputs), Variable(labels)
-
-            print(inputs.shape, labels.shape)
+        for i, (inputs, labels) in enumerate(train_loader, 0):
             # Set the parameter gradients to zero
             optimizer.zero_grad()
 
@@ -113,66 +115,50 @@ def train_net(net, train_loader, test_loader, batch_size, n_epochs, learning_rat
             loss_size.backward()
             optimizer.step()
 
-            # evaluate training loss and accuracy
-            l_temp, acc_temp = train_eval()
-            train_loss_store.append(l_temp)
-            train_acc_store.append(acc_temp)
+        if verbose:
+            print(f"Epoch {epoch + 1}:")
 
-            # evaluate testing loss and accuracy
-            l_temp, acc_temp = test_eval()
-            test_loss_store.append(l_temp)
-            test_acc_store.append(acc_temp)
+        # evaluate training loss and accuracy
+        l_temp, acc_temp = train_eval(verbose=verbose)
+        train_loss_store.append(l_temp)
+        train_acc_store.append(acc_temp)
 
-            # Print statistics
-            running_loss += l_temp
-            total_train_loss += l_temp
+        # evaluate testing loss and accuracy
+        l_temp, acc_temp = test_eval(verbose=verbose)
+        test_loss_store.append(l_temp)
+        test_acc_store.append(acc_temp)
 
-            # Print every 10th batch of an epoch
-            if (i + 1) % (print_every + 1) == 0:
-                print("Epoch {}, {:d}% \t train_loss: {:.2f} took: {:.2f}s".format(
-                    epoch + 1, int(100 * (i + 1) / n_batches), running_loss / print_every, time.time() - start_time))
-                # Reset running loss and time
-                running_loss = 0.0
-                start_time = time.time()
-
-        # At the end of the epoch, do a pass on the validation set
-        total_val_loss = 0
-        for inputs, labels in test_loader:
-            # Wrap tensors in Variables
-            inputs, labels = Variable(inputs), Variable(labels)
-
-            # Forward pass
-            val_outputs = net(inputs)
-            val_loss_size = loss(val_outputs, labels).item()
-            total_val_loss += val_loss_size
-
-        print("Validation loss = {:.2f}".format(total_val_loss / len(test_loader)))
     print("Training finished, took {:.2f}s".format(time.time() - training_start_time))
+    # evaluate training loss and accuracy
+    l_temp, acc_temp = train_eval(verbose=True)
+
+    # evaluate testing loss and accuracy
+    l_temp, acc_temp = test_eval(verbose=True)
 
 
 if __name__ == '__main__':
     # directory file path
     data_dir = Path("/Users/adam2392/Documents/dldo/data/raw/hw2")
-    data_fname = "stable4.txt"
+    data_fname = "stable6.txt"
     data_fpath = Path(data_dir / data_fname)
 
-    # load in the file path
-    X = []
-    y = []
-    with open(data_fpath, 'r') as fin:
-        for i in range(6):
-            fin.readline()
-        for line in fin:
-            line = list(map(int, line.strip().split(' ')))
-            X.append(line[:-1])
-            y.append(line[-1])
-    X = np.array(X)
-    y = np.array(y)
+    # read in the data
+    # X, y = read_from_txt(data_fpath)
+    # Input the data and split into features and labels
+    data = np.genfromtxt(data_fpath, dtype=np.int64, skip_header=7)
+    X = data[:, :-1]
+    y = data[:, -1]
+    y -= 1  # index at 0
 
     # initialize
-    input_size = len(line[:-1])
+    input_size = X.shape[1]
+    n_classes = len(np.unique(y))
+
     # define neural network
-    net = GraphNet(input_size=input_size)
+    num_neurons = 20
+    net = GraphNet(input_size=input_size,
+                   n_classes=n_classes,
+                   num_neurons=num_neurons)
     print(net)
 
     # initialize loss function and nn optimizer
@@ -180,18 +166,19 @@ if __name__ == '__main__':
 
     # initialize training parameters
     shuffle_dataset = True
-    learning_rate = 0.001
-    n_epochs = 10
-    batch_size = 4
-    validation_split = .1
-    test_split = .2
+    learning_rate = 5e-3
+    n_epochs = 50
+    batch_size = 10
+    test_split = .3
 
     # create training dataset
-    X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=shuffle_dataset, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                        shuffle=shuffle_dataset,
+                                                        test_size=test_split)
     Xtrain = torch.Tensor(X_train)
     Xtest = torch.Tensor(X_test)
-    ytrain = torch.Tensor(y_train)
-    ytest = torch.Tensor(y_test)
+    ytrain = torch.LongTensor(y_train)
+    ytest = torch.LongTensor(y_test)
 
     # define pytorch Dataset
     train_set = torch.utils.data.TensorDataset(Xtrain, ytrain)

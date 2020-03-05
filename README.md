@@ -43,8 +43,9 @@ Installation
 ------------
     
     conda create -n dldo python=3.7 
-    conda install numpy scipy matplotlib seaborn pandas
+    conda install numpy scipy matplotlib seaborn pandas scikit-learn
     conda install ipykernel
+    conda install pytorch torchvision -c pytorch
     conda config --add channels http://conda.anaconda.org/gurobi
     conda install gurobi
     
